@@ -3,6 +3,9 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
 apply plugin: 'kotlin-android-extensions'
 
+// doraemonkit流量监控以及其他AOP功能
+apply plugin: 'com.didi.dokit'
+
 androidExtensions {
     experimental = true
 }
@@ -23,6 +26,8 @@ android {
 
         versionCode 1
         versionName "1.0"
+
+        multiDexEnabled true
     }
     buildTypes {
         release {
@@ -55,6 +60,15 @@ dependencies {
 
     implementation "io.reactivex.rxjava2:rxandroid:$rxandroid_version"
     implementation "io.reactivex.rxjava2:rxjava:$rxjava_version"
+
+    // 接入doraemonkit
+    // http://xingyun.xiaojukeji.com/docs/dokit/#/androidGuide
+    debugImplementation "com.didichuxing.doraemonkit:doraemonkit:$doraemonkit_version"
+    releaseImplementation "com.didichuxing.doraemonkit:doraemonkit-no-op:$doraemonkit_version"
+    // LeakCanary 已经在 doraemonkit 中动态集成，不需要自己再进行手动集成，只需要添加上面的依赖即可。
+    debugImplementation "com.didichuxing.doraemonkit:doraemonkit-leakcanary:$doraemonkit_version"
+
+    implementation "androidx.multidex:multidex:$multidex_version"
 }
 
 repositories {
@@ -64,4 +78,45 @@ repositories {
     maven { url 'https://maven.google.com' }
     maven { url "https://jitpack.io" }
     flatDir { dirs 'libs' }
+}
+
+// doraemonkit流量监控以及其他AOP功能（可选） http://xingyun.xiaojukeji.com/docs/dokit/#/androidGuide
+// 其中strategy和methodSwitch配置项已经弃用。新的配置开关位于项目根目录下的gradle.properties中。
+dokitExt {
+    //dokit 插件开关
+    dokitPluginSwitch true
+    //通用设置
+    comm {
+        //地图经纬度开关
+        gpsSwitch true
+        //网络开关
+        networkSwitch true
+        //大图开关
+        bigImgSwitch true
+    }
+
+    slowMethod {
+        //0:默认模式 打印函数调用栈 需添加指定入口  默认为application onCreate 和attachBaseContext
+        //1:普通模式 运行时打印某个函数的耗时 全局业务代码函数插入 已弃用
+        strategy 1
+        //函数功能开关 已弃用
+        methodSwitch false
+
+        //调用栈模式配置
+        stackMethod {
+            //默认值为 5ms 小于该值的函数在调用栈中不显示
+            thresholdTime 5
+            //调用栈函数入口
+            enterMethods = ["com.didichuxing.doraemondemo.MainDebugActivity.test1"]
+        }
+        //普通模式配置
+        normalMethod {
+            //默认值为 500ms 小于该值的函数在运行时不会在控制台中被打印
+            thresholdTime 100
+            //需要针对函数插装的包名
+            packageNames = ["com.didichuxing.doraemondemo"]
+            //不需要针对函数插装的包名&类名
+            methodBlacklist = ["com.didichuxing.doraemondemo.dokit"]
+        }
+    }
 }
